@@ -8,49 +8,58 @@ class Node:
      ['4','5','6'],
      ['7',' ','8']]
     '''
-    def __init__(self, startState, tag = None, parent = None):
+    def __init__(self, startState, tag=None, parent=None):
         self.state = startState
         self.tag = tag
         self.parent = parent
 
-    def getPos(self):
-        return np.where(self.state == ' ')
-        
+    def getPos(self, pos):
+        return np.where(self.state == pos)
+
+    # getWn,getPn,getSn可扩展至n数码
     def getWn(self, endState):
         res = 0
         for i in range(3):
             for j in range(3):
-                if self.state[i, j] != endState[i, j] and self.state[i,j] != ' ':
+                if self.state[i, j] != endState[i, j] and self.state[i, j] != ' ':
                     res += 1
         return res
 
+    def getPn(self, endState):
+        res = 0
+        for i in range(3):
+            for j in range(3):
+                tmp = self.state[i, j]
+                row, col = np.where(endState == tmp)
+                res += abs(i - row) + abs(j - col)
+        return res
+
+    def getSn(self, endState):
+        res = 0
+        tmp = [(0,0),(0,1),(0,2),(1,2),(2,2),(2,1),(2,0),(1,0)]
+        for i in range(8):
+            t = self.state[tmp[i][0],tmp[i][1]]
+            tn = self.state[tmp[(i+1)%8][0],tmp[(i+1)%8][1]]
+            if t == ' ':
+                continue
+            else:
+                # x = endState[tmp[(i+1)%8][0],tmp[(i+1)%8][1]]
+                x,y = np.where(endState == t)
+                n = tmp.index((x[0],y[0])) + 1
+                n %= 8
+                dn = endState[tmp[n][0],tmp[n][1]]
+                if tn != dn:
+                    res += 2
+        if self.state[1,1] != ' ':
+            res += 1
+        return res
+
+            
 
 class EightDigital:
     def __init__(self, startState, endState):
         self.node = Node(startState)
         self.endState = endState
-
-    def run(self):
-        open = []
-        close = []
-        open.append(self.node)
-        nodeSum = 0
-        steps = 1
-
-        while open:
-            self.node = open.pop(0)
-            if (self.node.state == self.endState).all():
-                return self.getPath(), steps, nodeSum
-            else:
-                close.append(self.node)
-                childNode = self.expand()
-                nodeSum += len(childNode)
-                steps += 1
-                for s in childNode:
-                    s.fn = self.getDeepth() + 1 + s.getWn(self.endState)
-                open.extend(childNode)
-                open.sort(key=lambda s: s.fn)
-        return None, steps, nodeSum
 
     def getDeepth(self):
         tmp = self.node
@@ -66,10 +75,10 @@ class EightDigital:
         while self.node.parent:
             self.node = self.node.parent
             path.append(self.node.state.tolist())
-        return path
+        return reversed(path)
 
     def expand(self):
-        row, col = self.node.getPos()
+        row, col = self.node.getPos(' ')
         childNode = []
 
         if 'Up' != self.node.tag and row > 0:
@@ -109,15 +118,3 @@ class EightDigital:
         tmp[row, col], tmp[row, col + 1] = tmp[row, col + 1], tmp[row, col]
         child = Node(tmp, 'Left', self.node)
         return child
-
-
-if __name__ == "__main__":
-    startState = np.array([[2, 8, 3], [1, 6, 4], [7, ' ', 5]])
-    endState = np.array([[1, 2, 3], [8, ' ', 4], [7, 6, 5]])
-    test = EightDigital(startState, endState)
-    path,steps,nodeSum = test.run()
-    for i in path:
-        for j in i:
-            print(j)
-        print('---------------')
-    print(steps,nodeSum)
